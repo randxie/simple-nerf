@@ -30,7 +30,8 @@ def get_rays(
 
     # (B, W, H, 3)
     dirs = torch.cat([x, y, z],
-                     dim=-1).unsqueeze(0).repeat(c2w.shape[0], 1, 1, 1).to(c2w.device)
+                     dim=-1).unsqueeze(0).repeat(c2w.shape[0], 1, 1,
+                                                 1).to(c2w.device)
     rays_d = torch.einsum('bxyz,bzk->bxyk', dirs, c2w[:, :3, :3])
     rays_o = c2w[:, None, None, :3, -1].expand(rays_d.shape)
 

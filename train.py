@@ -28,13 +28,14 @@ if __name__ == "__main__":
     width, height = data.width, data.height
     focal = data.focal
 
-    train_size = 1 #int(0.8 * len(data))
+    train_size = 1  #int(0.8 * len(data))
     test_size = len(data) - train_size
 
     # fix seed for reproducibility
     generator = torch.Generator()
     generator.manual_seed(42)
-    dtrain, dval = random_split(data, [train_size, test_size], generator=generator)
+    dtrain, dval = random_split(data, [train_size, test_size],
+                                generator=generator)
 
     # create the model and optimizer
     device = "cuda:0"
@@ -48,9 +49,15 @@ if __name__ == "__main__":
     iter_nums = []
     psnrs = []
     for it in range(n_iters):
-        for (img_b, pose_b) in tqdm(DataLoader(dtrain, batch_size=1, shuffle=True)):
+        for (img_b,
+             pose_b) in tqdm(DataLoader(dtrain, batch_size=1, shuffle=True)):
             # pose should be a (B, 4, 4) matrix
-            rays_o, rays_d = get_rays(focal, pose_b, height=height, width=width,)
+            rays_o, rays_d = get_rays(
+                focal,
+                pose_b,
+                height=height,
+                width=width,
+            )
 
             # load to GPU
             img_b = img_b.to(device)
@@ -60,7 +67,11 @@ if __name__ == "__main__":
 
             # Run the model and predict the novel view
             # (B, H, W, 3)
-            img_pred, depth_pred, acc_pred = nerf_mdl(rays_o, rays_d, near=2.0, far=6.0, n_samples=64)
+            img_pred, depth_pred, acc_pred = nerf_mdl(rays_o,
+                                                      rays_d,
+                                                      near=2.0,
+                                                      far=6.0,
+                                                      n_samples=64)
             loss = torch.mean(torch.square(img_b - img_pred))
             loss.backward()
             optimizer.step()

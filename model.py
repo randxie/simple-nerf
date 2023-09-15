@@ -6,7 +6,8 @@ from jaxtyping import Float
 import matplotlib.pyplot as plt
 
 
-def position_encode(x: Float[torch.Tensor, "N 3"], l_emb: int = 6) -> Float[torch.Tensor, "N d"]:
+def position_encode(x: Float[torch.Tensor, "N 3"],
+                    l_emb: int = 6) -> Float[torch.Tensor, "N d"]:
     """
     Map each point in x from R to R^{2L}
 
@@ -14,12 +15,14 @@ def position_encode(x: Float[torch.Tensor, "N 3"], l_emb: int = 6) -> Float[torc
     :param l_emb: The number of pos enc function
     :return: Encoded tensor
     """
-    pos_enc = torch.pow(torch.arange(l_emb, dtype=torch.float32), 2.0).to(x.device)
-    sin_enc = torch.sin(pos_enc)
-    cos_enc = torch.cos(pos_enc)
 
-    x_sin = torch.einsum('bi,j->bij', x, sin_enc).view(x.shape[0], -1)
-    x_cos = torch.einsum('bi,j->bij', x, cos_enc).view(x.shape[0], -1)
+    # l_emb
+    pos_enc = torch.pow(torch.arange(l_emb, dtype=torch.float32),
+                        2.0).to(x.device)
+    x_sin = torch.sin(x.unsqueeze(-1) * pos_enc.unsqueeze(0)).view(
+        x.shape[0], -1)
+    x_cos = torch.cos(x.unsqueeze(-1) * pos_enc.unsqueeze(0)).view(
+        x.shape[0], -1)
 
     return torch.cat([x, x_sin, x_cos], dim=-1)
 
@@ -42,17 +45,19 @@ class MLP(nn.Module):
         dim_in = num_channels + 2 * l_emb * num_channels
         self.w_in = nn.Linear(dim_in, dim_hidden)
 
-        self.w_hidden_1 = nn.ModuleList(
-            [nn.Sequential(
+        self.w_hidden_1 = nn.ModuleList([
+            nn.Sequential(
                 nn.Linear(dim_hidden, dim_hidden),
                 nn.ReLU(),
-            ) for _ in range(num_hidden // 2)])
+            ) for _ in range(num_hidden // 2)
+        ])
         self.w_hidden_cast = nn.Linear(dim_in + dim_hidden, dim_hidden)
-        self.w_hidden_2 = nn.ModuleList(
-            [nn.Sequential(
+        self.w_hidden_2 = nn.ModuleList([
+            nn.Sequential(
                 nn.Linear(dim_hidden, dim_hidden),
                 nn.ReLU(),
-            ) for _ in range(num_hidden // 2)])
+            ) for _ in range(num_hidden // 2)
+        ])
 
         self.w_out = nn.Linear(dim_hidden, dim_out)
 
@@ -91,7 +96,10 @@ class Batcher(object):
         fn: Callable[[Float[torch.Tensor, "N 3"]], torch.Tensor],
         x: Float[torch.Tensor, "N 4"],
     ):
-        output = torch.zeros(x.shape[0], self.out_dim, device=x.device, dtype=x.dtype)
+        output = torch.zeros(x.shape[0],
+                             self.out_dim,
+                             device=x.device,
+                             dtype=x.dtype)
         for i in range(0, x.shape[0], self.batch_size):
             output[i:i + self.batch_size] = fn(x[i:i + self.batch_size])
 
@@ -117,7 +125,8 @@ class NaiveNERF(nn.Module):
         depth_vals = depth_vals.to(rays_d.device)
 
         # [B, H, W, N_Samples, 3]
-        pts = rays_o.unsqueeze(-2) + rays_d.unsqueeze(-2) * depth_vals.unsqueeze(-1)
+        pts = rays_o.unsqueeze(
+            -2) + rays_d.unsqueeze(-2) * depth_vals.unsqueeze(-1)
 
         # [H*W, 3]
         pts_flat = pts.view(B * H * W * n_samples, 3)
@@ -138,7 +147,10 @@ class NaiveNERF(nn.Module):
         sigma = torch.relu(pts_pred[..., 3])
         # [N]
         steps = torch.cat(
-            [depth_vals[1:] - depth_vals[:-1], 1e10 * torch.ones(1, device=depth_vals.device, dtype=rays_d.dtype)],
+            [
+                depth_vals[1:] - depth_vals[:-1], 1e10 *
+                torch.ones(1, device=depth_vals.device, dtype=rays_d.dtype)
+            ],
             dim=0,
         )
         # [B, H, W, N]
