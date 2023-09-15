@@ -75,13 +75,7 @@ class MLP(nn.Module):
             x = layer(x)
         x = self.w_out(x)
 
-        x_rgb, x_sigma = x.split(3, dim=-1)
-        x_rgb = torch.sigmoid(x_rgb)
-        x_sigma = torch.relu(x_sigma)
-
-        x_out = torch.cat([x_rgb, x_sigma], dim=-1)
-
-        return x_out
+        return x
 
 
 class Batcher(object):
