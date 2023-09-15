@@ -1,21 +1,13 @@
-import os
-import sys
-import time
 import torch
-from torch import nn, unsqueeze
-from torch.utils.data import Dataset, DataLoader
-import numpy as np
-from typing import Callable, Tuple
+from typing import Tuple
 from jaxtyping import Float
-import matplotlib.pyplot as plt
-from torch.utils.data import random_split
 
 
 def get_rays(
     focal: float,
     c2w: Float[torch.Tensor, "b 4 4"],
-    height: int = 800,
-    width: int = 800,
+    height: int = 100,
+    width: int = 100,
 ) -> Tuple[Float[torch.Tensor, "b w h 3"], Float[torch.Tensor, "b w h 3"]]:
     """Get rays origin and direction in the world coordinate system.
 
@@ -38,8 +30,8 @@ def get_rays(
 
     # (B, W, H, 3)
     dirs = torch.cat([x, y, z],
-                     dim=-1).unsqueeze(0).repeat(c2w.shape[0], 1, 1, 1)
+                     dim=-1).unsqueeze(0).repeat(c2w.shape[0], 1, 1, 1).to(c2w.device)
     rays_d = torch.einsum('bxyz,bzk->bxyk', dirs, c2w[:, :3, :3])
-    rays_o = c2w[:, :3, -1].expand(rays_d.shape)
+    rays_o = c2w[:, None, None, :3, -1].expand(rays_d.shape)
 
     return rays_o, rays_d
