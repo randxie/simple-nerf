@@ -28,7 +28,7 @@ if __name__ == "__main__":
     width, height = data.width, data.height
     focal = data.focal
 
-    train_size = 1  #int(0.8 * len(data))
+    train_size = int(0.8 * len(data))
     test_size = len(data) - train_size
 
     # fix seed for reproducibility
@@ -85,37 +85,36 @@ if __name__ == "__main__":
                 plt.subplot(122)
                 plt.imshow(img_b[0].detach().cpu().numpy())
                 plt.title(f'GT Iteration: {it}')
-                plt.savefig(f'./results/iter_{it}.png')
+                plt.savefig(f'./results/train_{it}.png')
                 plt.close()
 
         # run eval
-        # with torch.no_grad():
-        #     for img_b, pose_b in DataLoader(dval, batch_size=1, shuffle=True):
-        #         rays_o, rays_d = get_rays(focal, pose_b)
-        #         # load to GPU
-        #         img_b = img_b.to(device)
-        #         pose_b = pose_b.to(device)
-        #         rays_o = rays_o.to(device)
-        #         rays_d = rays_d.to(device)
-        #
-        #         img_pred, depth_pred, acc_pred = nerf_mdl(rays_o, rays_d, near=2.0, far=6.0, n_samples=64)
-        #         loss = torch.mean(torch.square(img_b - img_pred))
-        #
-        #         psnr = -10. * torch.log(loss) / np.log(10.0)
-        #         iter_nums.append(it)
-        #         psnrs.append(float(psnr.detach().cpu().numpy()))
-        #
-        #         plt.figure(figsize=(10, 4))
-        #         plt.subplot(131)
-        #         plt.imshow(img_pred[0].detach().cpu().numpy())
-        #         plt.title(f'Pred Iteration: {it}')
-        #         plt.subplot(132)
-        #         plt.imshow(img_b[0].detach().cpu().numpy())
-        #         plt.title(f'GT Iteration: {it}')
-        #         plt.subplot(133)
-        #         plt.plot(iter_nums, psnrs)
-        #         plt.title('PSNR')
-        #         plt.savefig(f'./results/iter_{it}.png')
-        #         plt.close()
-        #
-        #         break
+        with torch.no_grad():
+            for img_b, pose_b in DataLoader(dval, batch_size=1, shuffle=True):
+                rays_o, rays_d = get_rays(focal, pose_b)
+                # load to GPU
+                img_b = img_b.to(device)
+                pose_b = pose_b.to(device)
+                rays_o = rays_o.to(device)
+                rays_d = rays_d.to(device)
+
+                img_pred, depth_pred, acc_pred = nerf_mdl(rays_o, rays_d, near=2.0, far=6.0, n_samples=64)
+                loss = torch.mean(torch.square(img_b - img_pred))
+
+                psnr = -10. * torch.log(loss) / np.log(10.0)
+                iter_nums.append(it)
+                psnrs.append(float(psnr.detach().cpu().numpy()))
+
+                plt.figure(figsize=(10, 4))
+                plt.subplot(131)
+                plt.imshow(img_pred[0].detach().cpu().numpy())
+                plt.title(f'Pred Iteration: {it}')
+                plt.subplot(132)
+                plt.imshow(img_b[0].detach().cpu().numpy())
+                plt.title(f'GT Iteration: {it}')
+                plt.subplot(133)
+                plt.plot(iter_nums, psnrs)
+                plt.title('PSNR')
+                plt.savefig(f'./results/val_{it}.png')
+                plt.close()
+                break
