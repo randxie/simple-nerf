@@ -89,14 +89,11 @@ class Batcher(object):
         fn: Callable[[Float[torch.Tensor, "N 3"]], torch.Tensor],
         x: Float[torch.Tensor, "N 4"],
     ):
-        output = torch.zeros(x.shape[0],
-                             self.out_dim,
-                             device=x.device,
-                             dtype=x.dtype)
+        outputs = []
         for i in range(0, x.shape[0], self.batch_size):
-            output[i:i + self.batch_size] = fn(x[i:i + self.batch_size])
+            outputs.append(fn(x[i:i + self.batch_size]))
 
-        return output
+        return torch.concat(outputs, dim=0)
 
 
 class NaiveNERF(nn.Module):
@@ -114,15 +111,17 @@ class NaiveNERF(nn.Module):
         n_samples: int,
     ):
         B, W, H, _ = rays_o.shape
-        step_size = (far - near) / n_samples
+        step_size = (far - near) * 1.0 / n_samples
         depth_vals = torch.linspace(near, far, n_samples, dtype=rays_d.dtype)
 
         # adding random noise will improve the learning because you have varying z-loc
-        depth_vals += torch.rand(n_samples, dtype=depth_vals.dtype) * step_size
+        depth_vals = depth_vals + torch.rand(n_samples,
+                                             dtype=rays_d.dtype) * step_size
         depth_vals = depth_vals.to(rays_d.device)
 
         # [B, H, W, N_Samples, 3]
-        pts = rays_o.unsqueeze(-2) + rays_d.unsqueeze(-2) * depth_vals.unsqueeze(-1)
+        pts = rays_o.unsqueeze(
+            -2) + rays_d.unsqueeze(-2) * depth_vals.unsqueeze(-1)
 
         # [H*W, 3]
         pts_flat = pts.view(B * H * W * n_samples, 3)
@@ -147,19 +146,28 @@ class NaiveNERF(nn.Module):
         steps = torch.cat(
             [
                 depth_vals[1:] - depth_vals[:-1], 1e10 *
-                torch.ones(1, device=depth_vals.device, dtype=rays_d.dtype)
+                torch.ones(1, device=depth_vals.device, dtype=depth_vals.dtype)
             ],
             dim=0,
         )
         # [B, H, W, N]
-        alpha = 1 - torch.exp(-sigma * steps)
+        alpha = 1.0 - torch.exp(-sigma * steps)
+        pre_cum_alpha = torch.cat(
+            [
+                torch.ones(
+                    (B, H, W, 1), device=alpha.device, dtype=alpha.dtype),
+                1 - alpha + 1e-10
+            ],
+            dim=-1,
+        )
         # [B, H, W, N]
-        Ti = torch.cumprod(1 - alpha + 1e-10, dim=-1)
+        Ti = torch.cumprod(pre_cum_alpha, dim=-1)[..., :-1]
+
         # [B, H, W, N]
         weights = alpha * Ti
 
         # [B, H, W, 3]
-        rgb_map = torch.sum(rgb * weights.unsqueeze(-1), dim=-2)
+        rgb_map = torch.sum(weights.unsqueeze(-1) * rgb, dim=-2)
 
         # [B, H, W]
         depth_map = torch.sum(weights * depth_vals, dim=-1)

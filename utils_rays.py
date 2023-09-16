@@ -21,11 +21,14 @@ def get_rays(
     i, j = torch.meshgrid(
         torch.arange(width, dtype=torch.float32),
         torch.arange(height, dtype=torch.float32),
-        indexing='ij',
+        indexing='xy',
     )
 
-    x = ((i - width * 0.5) / focal).unsqueeze(-1)
-    y = ((height * 0.5 - j) / focal).unsqueeze(-1)
+    w_h = (width - 1) * 0.5
+    h_h = (height - 1) * 0.5
+
+    x = ((i - w_h) / focal).unsqueeze(-1)
+    y = ((h_h - j) / focal).unsqueeze(-1)
     z = -torch.ones_like(x)
 
     # (B, W, H, 3)
@@ -34,7 +37,7 @@ def get_rays(
         dim=-1,
     ).unsqueeze(0).repeat(c2w.shape[0], 1, 1, 1).to(c2w.device)
     rays_d = torch.einsum(
-        'bxyz,bzk->bxyk',
+        'bxyz,bkz->bxyk',
         dirs,
         c2w[:, :3, :3],
     )

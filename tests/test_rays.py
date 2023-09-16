@@ -16,7 +16,6 @@ def test_get_rays_succeeded():
     assert rays_d.shape == (1, 2, 2, 3)
 
 
-
 def test_pos_enc_succeeded():
     out = position_encode(torch.Tensor([[1, 2, 3]]), l_emb=1)
 

@@ -34,21 +34,23 @@ if __name__ == "__main__":
     # fix seed for reproducibility
     generator = torch.Generator()
     generator.manual_seed(42)
-    dtrain, dval = random_split(data, [train_size, test_size], generator=generator)
+    dtrain, dval = random_split(data, [train_size, test_size],
+                                generator=generator)
 
     # create the model and optimizer
     device = "cuda:0"
     nerf_mdl = NaiveNERF()
     nerf_mdl.to(device)
-    optimizer = torch.optim.Adam(nerf_mdl.parameters(), lr=5e-4)
+    optimizer = torch.optim.Adam(nerf_mdl.parameters(), lr=1e-4)
 
     # number of samples along each ray's direction
     n_samples = 64
-    n_iters = 1000
+    n_iters = 2000
     iter_nums = []
     psnrs = []
     for it in range(n_iters):
-        for (img_b, pose_b) in tqdm(DataLoader(dtrain, batch_size=2, shuffle=True)):
+        for (img_b,
+             pose_b) in tqdm(DataLoader(dtrain, batch_size=2, shuffle=True)):
             # pose should be a (B, 4, 4) matrix
             rays_o, rays_d = get_rays(
                 focal,
