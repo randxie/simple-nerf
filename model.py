@@ -1,9 +1,8 @@
 # Reference: Matt Williams's notebook https://github.com/bmild/nerf/blob/master/tiny_nerf.ipynb
 import torch
 from torch import nn
-from typing import Callable, Tuple
+from typing import Callable
 from jaxtyping import Float
-import matplotlib.pyplot as plt
 
 
 def position_encode(x: Float[torch.Tensor, "N 3"],
