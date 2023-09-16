@@ -115,12 +115,15 @@ class NaiveNERF(nn.Module):
         n_samples: int,
     ):
         B, W, H, _ = rays_o.shape
+        step_size = (far - near) / n_samples
         depth_vals = torch.linspace(near, far, n_samples, dtype=rays_d.dtype)
+
+        # adding random noise will improve the learning because you have varying z-loc
+        depth_vals += torch.rand(n_samples, dtype=depth_vals.dtype) * step_size
         depth_vals = depth_vals.to(rays_d.device)
 
         # [B, H, W, N_Samples, 3]
-        pts = rays_o.unsqueeze(
-            -2) + rays_d.unsqueeze(-2) * depth_vals.unsqueeze(-1)
+        pts = rays_o.unsqueeze(-2) + rays_d.unsqueeze(-2) * depth_vals.unsqueeze(-1)
 
         # [H*W, 3]
         pts_flat = pts.view(B * H * W * n_samples, 3)
@@ -137,8 +140,10 @@ class NaiveNERF(nn.Module):
         # do volume rendering
         # [B, H, W, N, 3]
         rgb = torch.sigmoid(pts_pred[..., :3])
+
         # [B, H, W, N]
         sigma = torch.relu(pts_pred[..., 3])
+
         # [N]
         steps = torch.cat(
             [
@@ -156,8 +161,10 @@ class NaiveNERF(nn.Module):
 
         # [B, H, W, 3]
         rgb_map = torch.sum(rgb * weights.unsqueeze(-1), dim=-2)
+
         # [B, H, W]
         depth_map = torch.sum(weights * depth_vals, dim=-1)
+
         # [B, H, W]
         acc_map = torch.sum(weights, dim=-1)
 
