@@ -5,3 +5,10 @@ Implement the original version of NERF using Pytorch, mainly done by refering to
 ## Why?
 
 Just want to explore the NERF technology, and the best way to do so is implementing things from "scratch".
+
+## How to Run?
+
+1. `make download`
+2. `python train.py`
+
+To run the tests, do `make test`
