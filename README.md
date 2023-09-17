@@ -1,6 +1,11 @@
 # simple-nerf
 
-Implement the original version of NERF using Pytorch, mainly done by refering to [tiny_nerf notebook](https://colab.research.google.com/drive/1s5Qc3r6dn66WfV8fXhD9rH-OMErkA7fx#scrollTo=R1avtwVoAQTu).
+Re-implement the original NERF by refering to [tiny_nerf notebook](https://github.com/bmild/nerf/blob/master/tiny_nerf.ipynb).
+
+Small differences:
+- Be able to batch multiple images (not just batching rays)
+- Add basic unit tests
+- Use Pytorch
 
 ## Why?
 
@@ -12,3 +17,9 @@ Just want to explore the NERF technology, and the best way to do so is implement
 2. `python train.py`
 
 To run the tests, do `make test`
+
+## Results
+
+Training for 10 epochs, we can get the following results.
+
+![validation at epoch 9](./figures/val_9.png)

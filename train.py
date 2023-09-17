@@ -34,24 +34,24 @@ if __name__ == "__main__":
     # fix seed for reproducibility
     generator = torch.Generator()
     generator.manual_seed(42)
-    dtrain, dval = random_split(data, [train_size, test_size],
-                                generator=generator)
+    dtrain, dval = random_split(data, [train_size, test_size], generator=generator)
 
     # create the model and optimizer
     device = "cuda:0"
     nerf_mdl = NaiveNERF()
     nerf_mdl.to(device)
-    optimizer = torch.optim.Adam(nerf_mdl.parameters(), lr=1e-4)
+    optimizer = torch.optim.Adam(nerf_mdl.parameters(), lr=5e-4)
 
     # number of samples along each ray's direction
     n_samples = 64
-    n_iters = 2000
+    n_epochs = 10
     iter_nums = []
     psnrs = []
-    for it in range(n_iters):
-        for (img_b,
-             pose_b) in tqdm(DataLoader(dtrain, batch_size=2, shuffle=True)):
+
+    for epoch in range(n_epochs):
+        for (img_b, pose_b) in tqdm(DataLoader(dtrain, batch_size=2, shuffle=True)):
             # pose should be a (B, 4, 4) matrix
+            # Verify numerically the get_rays functions matches with the notebook
             rays_o, rays_d = get_rays(
                 focal,
                 pose_b,
@@ -73,28 +73,18 @@ if __name__ == "__main__":
                 near=2.0,
                 far=6.0,
                 n_samples=64,
+                perturb=False, # with perturbation, we need much more epochs.
             )
             loss = torch.mean(torch.square(img_b - img_pred))
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
 
-            if it % 10 == 0:
-                plt.figure(figsize=(10, 4))
-                plt.subplot(121)
-                plt.imshow(img_pred[0].detach().cpu().numpy())
-                plt.title(f'Pred Iteration: {it}')
-                plt.subplot(122)
-                plt.imshow(img_b[0].detach().cpu().numpy())
-                plt.title(f'GT Iteration: {it}')
-                plt.savefig(f'./results/train_{it}.png')
-                plt.close()
-
         # run eval
         with torch.no_grad():
             for img_b, pose_b in DataLoader(dval, batch_size=1, shuffle=True):
                 rays_o, rays_d = get_rays(focal, pose_b)
-                # load to GPU
+
                 img_b = img_b.to(device)
                 pose_b = pose_b.to(device)
                 rays_o = rays_o.to(device)
@@ -110,19 +100,21 @@ if __name__ == "__main__":
                 loss = torch.mean(torch.square(img_b - img_pred))
 
                 psnr = -10. * torch.log(loss) / np.log(10.0)
-                iter_nums.append(it)
+                iter_nums.append(epoch)
                 psnrs.append(float(psnr.detach().cpu().numpy()))
 
                 plt.figure(figsize=(10, 4))
                 plt.subplot(131)
                 plt.imshow(img_pred[0].detach().cpu().numpy())
-                plt.title(f'Pred Iteration: {it}')
+                plt.title(f'Predicted Image')
                 plt.subplot(132)
                 plt.imshow(img_b[0].detach().cpu().numpy())
-                plt.title(f'GT Iteration: {it}')
+                plt.title(f'Ground Truth Image')
                 plt.subplot(133)
                 plt.plot(iter_nums, psnrs)
-                plt.title('PSNR')
-                plt.savefig(f'./results/val_{it}.png')
+                plt.title(f'PSNR at Epoch: {epoch}')
+                plt.savefig(f'./results/val_{epoch}.png')
                 plt.close()
+
+                # Just run one image
                 break

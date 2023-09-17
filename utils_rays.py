@@ -24,8 +24,8 @@ def get_rays(
         indexing='xy',
     )
 
-    w_h = (width - 1) * 0.5
-    h_h = (height - 1) * 0.5
+    w_h = width * 0.5
+    h_h = height * 0.5
 
     x = ((i - w_h) / focal).unsqueeze(-1)
     y = ((h_h - j) / focal).unsqueeze(-1)
